@@ -1,0 +1,29 @@
+services:
+
+  db:
+    image: mariadb:11
+
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: apm_db
+      MYSQL_USER: apm_user
+      MYSQL_PASSWORD: apm_pass
+
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build: ./backend
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - ./backend:/app
+
+    depends_on:
+      db:
+        condition: service_healthy

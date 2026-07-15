@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Historique — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Historique des actions</h1><div class="subtitle">{{ total }} action(s) enregistrée(s)</div></div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
+    <div class="form-group" style="margin-bottom:0;">
+      <label style="font-size:11px;color:var(--muted);">Date</label>
+      <input type="date" name="date" value="{{ date_filtre }}" class="search-input">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label style="font-size:11px;color:var(--muted);">Utilisateur</label>
+      <input type="text" name="user" value="{{ user_filtre }}" placeholder="Nom d'utilisateur" class="search-input">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label style="font-size:11px;color:var(--muted);">Modèle</label>
+      <input type="text" name="modele" value="{{ modele_filtre }}" placeholder="Ex: Application" class="search-input">
+    </div>
+    <button type="submit" class="btn btn-primary">Filtrer</button>
+    <a href="{% url 'historique_page' %}" class="btn btn-outline">Réinitialiser</a>
+  </form>
+</div>
+
+<div class="chart-wrap" style="grid-template-columns:1fr;">
+  <div class="chart-card" style="text-align:left;">
+    <h4>Actions par jour (7 derniers jours)</h4>
+    <div class="chart-canvas-box"><canvas id="chartHisto"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-bottom:14px;">Journal détaillé</h3>
+  <div class="histo-list">
+    {% for a in actions %}
+    <div class="histo-item">
+      <div class="histo-dot {% if 'Création' in a.action or 'Upload' in a.action or 'Ajout' in a.action %}hd-green{% elif 'Suppression' in a.action %}hd-red{% elif 'Modification' in a.action or 'Import' in a.action %}hd-orange{% endif %}"></div>
+      <div class="histo-body">
+        <div class="histo-action">{{ a.action }}</div>
+        <div class="histo-meta">
+          <strong>{{ a.utilisateur.username|default:"Système" }}</strong> — {{ a.date_action|date:"d/m/Y H:i" }}
+          {% if a.modele %} — <span class="badge badge-muted">{{ a.modele }}</span>{% endif %}
+          {% if a.objet_repr %} — <em>{{ a.objet_repr }}</em>{% endif %}
+          {% if a.ip_address %} — IP: {{ a.ip_address }}{% endif %}
+        </div>
+        {% if a.details %}<div class="histo-meta" style="font-style:italic;">{{ a.details|truncatechars:120 }}</div>{% endif %}
+      </div>
+    </div>
+    {% empty %}<p class="helptext">Aucune action trouvée pour ces filtres.</p>{% endfor %}
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+var statsJour = {{ stats_jour_json|safe }};
+new Chart(document.getElementById('chartHisto'), {
+  type: 'bar',
+  data: { labels: statsJour.labels, datasets: [{ label: 'Actions', data: statsJour.values, backgroundColor: '#4C6EF5', borderRadius: 6 }] },
+  options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}, maintainAspectRatio:false }
+});
+</script>
+{% endblock %}

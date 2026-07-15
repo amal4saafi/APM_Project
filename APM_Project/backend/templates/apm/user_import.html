@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Importer des utilisateurs — APM{% endblock %}
+{% block content %}
+
+<div class="page-header"><h1>Importer des utilisateurs depuis Excel</h1></div>
+
+<div class="form-card">
+  <p class="helptext">
+    Colonnes attendues (dans l'ordre, avec en-tête en ligne 1) :<br>
+    <strong>username, nom, prenom, email, telephone, departement, role</strong><br>
+    Si un utilisateur avec le même <em>username</em> existe déjà, ses informations seront mises à jour.
+  </p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="form-group">
+      {{ form.fichier.label_tag }}
+      {{ form.fichier }}
+      {% if form.fichier.errors %}<ul class="errorlist">{% for e in form.fichier.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    <button type="submit" class="btn btn-primary">Importer</button>
+    <a href="{% url 'users_list' %}" class="btn btn-outline">Annuler</a>
+  </form>
+</div>
+
+{% endblock %}

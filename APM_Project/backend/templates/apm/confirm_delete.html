@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Confirmer l'archivage — APM{% endblock %}
+{% block content %}
+
+<div class="page-header"><h1>{% if action_label == 'archiver' %}Confirmer l'archivage{% else %}Confirmer la suppression{% endif %}</h1></div>
+
+<div class="form-card">
+  {% if action_label == 'archiver' %}
+  <p>Voulez-vous archiver <strong>{{ obj }}</strong> ? L'élément sera masqué des listes actives mais restera accessible depuis la section « Archives », d'où vous pourrez le restaurer à tout moment.</p>
+  {% else %}
+  <p>Voulez-vous vraiment supprimer <strong>{{ obj }}</strong> ? Cette action est irréversible.</p>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {% if action_label == 'archiver' %}
+      <button type="submit" class="btn btn-primary">Oui, archiver</button>
+    {% else %}
+      <button type="submit" class="btn btn-danger">Oui, supprimer</button>
+    {% endif %}
+    <a href="{% url back_url %}" class="btn btn-outline">Annuler</a>
+  </form>
+</div>
+
+{% endblock %}

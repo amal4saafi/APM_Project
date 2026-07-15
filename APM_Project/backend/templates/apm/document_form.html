@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — APM{% endblock %}
+{% block content %}
+
+<div class="page-header"><h1>{{ title }}</h1></div>
+
+<div class="form-card">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}">
+        {% if field.field.widget.input_type == 'checkbox' %}
+          {{ field }}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% else %}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+        {% endif %}
+        {% if field.help_text %}<small class="helptext">{{ field.help_text }}</small>{% endif %}
+        {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Enregistrer</button>
+    <a href="{% url 'documents_list' %}" class="btn btn-outline">Annuler</a>
+  </form>
+</div>
+
+{% if doc %}
+<div class="card" style="margin-top:18px;">
+  <h3 style="margin-bottom:12px;">📎 Fichiers attachés</h3>
+
+  <!-- Formulaire d'upload -->
+  <form method="post" action="{% url 'document_upload_fichier' doc.pk %}" enctype="multipart/form-data" class="upload-zone" id="upload-form">
+    {% csrf_token %}
+    <div class="upload-dropzone" id="dropzone">
+      <div class="upload-icon">📤</div>
+      <p><strong>Glissez un fichier ici</strong> ou cliquez pour parcourir</p>
+      <small class="helptext">Formats acceptés : PDF, DOCX, XLSX, PNG, JPG</small>
+      <input type="file" name="fichier" id="file-input" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg" style="display:none;">
+    </div>
+    <div id="file-selected" style="display:none;margin-top:10px;"></div>
+    <button type="submit" class="btn btn-primary" style="margin-top:10px;">Uploader le fichier</button>
+  </form>
+
+  <!-- Liste des fichiers déjà uploadés -->
+  <div class="cards-grid" style="margin-top:16px;">
+    {% for f in fichiers %}
+    <div class="dyn-card">
+      <div class="dc-icon {% if f.type_fichier == 'pdf' %}dc-red{% elif f.type_fichier == 'xlsx' %}dc-green{% elif f.type_fichier == 'docx' %}dc-blue{% else %}dc-gray{% endif %}">
+        {% if f.type_fichier == 'pdf' %}📕{% elif f.type_fichier == 'xlsx' %}📊{% elif f.type_fichier == 'docx' %}📘{% else %}🖼️{% endif %}
+      </div>
+      <div class="dc-title">{{ f.nom_original }}</div>
+      <div class="dc-sub">{{ f.taille_ko }} Ko — {{ f.uploade_le|date:"d/m/Y H:i" }}</div>
+      <div class="dc-actions">
+        <a href="{{ f.fichier.url }}" target="_blank" class="btn btn-outline btn-sm">Télécharger</a>
+        <form method="post" action="{% url 'document_fichier_delete' f.pk %}" style="display:inline;" onsubmit="return confirm('Supprimer ce fichier ?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger btn-sm">Supprimer</button>
+        </form>
+      </div>
+    </div>
+    {% empty %}
+    <p class="helptext">Aucun fichier attaché pour le moment.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<style>
+.upload-dropzone{border:2px dashed var(--border-strong);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;}
+.upload-dropzone:hover,.upload-dropzone.dragover{border-color:#4C6EF5;background:#F8F9FF;}
+.upload-icon{font-size:32px;margin-bottom:8px;}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var dz = document.getElementById('dropzone');
+  var input = document.getElementById('file-input');
+  var selected = document.getElementById('file-selected');
+  if(!dz) return;
+  dz.addEventListener('click', function(){ input.click(); });
+  dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', function(){ dz.classList.remove('dragover'); });
+  dz.addEventListener('drop', function(e){
+    e.preventDefault(); dz.classList.remove('dragover');
+    if(e.dataTransfer.files.length){ input.files = e.dataTransfer.files; showFile(); }
+  });
+  input.addEventListener('change', showFile);
+  function showFile(){
+    if(input.files.length){
+      var f = input.files[0];
+      selected.style.display = 'block';
+      selected.innerHTML = '<span class="badge badge-primary">📄 ' + f.name + ' (' + Math.round(f.size/1024) + ' Ko)</span>';
+    }
+  }
+});
+</script>
+
+{% endblock %}

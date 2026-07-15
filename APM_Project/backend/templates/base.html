@@ -1,0 +1,154 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}APM TOPNET{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">APM<span class="brand-accent">TOPNET</span><small>Gestion du Patrimoine Applicatif</small></div>
+
+    <div class="user-badge">
+      {{ user.get_full_name|default:user.username }}<br>
+      {% if user.is_admin_role %}
+        <span class="role-pill role-admin">{% if user.role %}{{ user.role.nom }}{% else %}Super Admin{% endif %}</span>
+      {% elif user.is_systeme_role %}
+        <span class="role-pill role-systeme">{{ user.role.nom }}</span>
+      {% elif user.is_dsi_role %}
+        <span class="role-pill role-dsi">{{ user.role.nom }}</span>
+      {% else %}
+        <span class="role-pill">{% if user.role %}{{ user.role.nom }}{% else %}User{% endif %}</span>
+      {% endif %}
+    </div>
+
+    <nav>
+      {% if user.is_admin_role %}
+        <a href="{% url 'dashboard_admin' %}" class="{% if request.resolver_match.url_name == 'dashboard_admin' %}active{% endif %}">📊 Dashboard</a>
+        <div class="section-title">Administration</div>
+        <a href="{% url 'users_list' %}" class="{% if request.resolver_match.url_name == 'users_list' %}active{% endif %}">👤 Utilisateurs</a>
+        <a href="{% url 'roles_list' %}" class="{% if request.resolver_match.url_name == 'roles_list' %}active{% endif %}">🔑 Rôles</a>
+      {% elif user.is_systeme_role %}
+        <a href="{% url 'dashboard_systeme' %}" class="{% if request.resolver_match.url_name == 'dashboard_systeme' %}active{% endif %}">📊 Dashboard</a>
+        <div class="section-title">Ressources</div>
+        <a href="{% url 'ressources_edit' %}" class="{% if request.resolver_match.url_name == 'ressources_edit' %}active{% endif %}">⚙️ Capacité CPU / RAM</a>
+        <div class="section-title">Patrimoine (lecture seule)</div>
+        <a href="{% url 'applications_list' %}" class="{% if 'application' in request.resolver_match.url_name %}active{% endif %}">🧩 Applications</a>
+        <a href="{% url 'environnements_list' %}" class="{% if 'environnement' in request.resolver_match.url_name %}active{% endif %}">🖥️ Environnements</a>
+        <a href="{% url 'ssl_list' %}" class="{% if request.resolver_match.url_name == 'ssl_list' %}active{% endif %}">🔒 Certificats SSL</a>
+        <a href="{% url 'noms_domaine_list' %}" class="{% if request.resolver_match.url_name == 'noms_domaine_list' %}active{% endif %}">🌐 Noms de domaine</a>
+      {% else %}
+        <a href="{% url 'dashboard_user' %}" class="{% if request.resolver_match.url_name == 'dashboard_user' %}active{% endif %}">📊 Mon dashboard</a>
+        {% if can_manage_patrimoine %}
+          <div class="section-title">Patrimoine</div>
+          <a href="{% url 'applications_list' %}" class="{% if 'application' in request.resolver_match.url_name %}active{% endif %}">🧩 Applications</a>
+          <a href="{% url 'environnements_list' %}" class="{% if 'environnement' in request.resolver_match.url_name %}active{% endif %}">🖥️ Environnements</a>
+          <a href="{% url 'ssl_list' %}" class="{% if request.resolver_match.url_name == 'ssl_list' %}active{% endif %}">🔒 Certificats SSL</a>
+          <a href="{% url 'noms_domaine_list' %}" class="{% if request.resolver_match.url_name == 'noms_domaine_list' %}active{% endif %}">🌐 Noms de domaine</a>
+          <a href="{% url 'contrats_list' %}" class="{% if request.resolver_match.url_name == 'contrats_list' %}active{% endif %}">📄 Contrats</a>
+          <a href="{% url 'documents_list' %}" class="{% if request.resolver_match.url_name == 'documents_list' %}active{% endif %}">📚 Documentation</a>
+          <a href="{% url 'rapports_page' %}" class="{% if request.resolver_match.url_name == 'rapports_page' %}active{% endif %}">📈 Rapports</a>
+        {% endif %}
+      {% endif %}
+    </nav>
+
+    <div class="sidebar-bottom-actions">
+      <a href="{% url 'profil' %}" class="nav-item" style="text-decoration:none;">
+        <i class="ti ti-user-circle" aria-hidden="true"></i> Mon profil
+      </a>
+      <a href="{% url 'historique_page' %}" class="nav-item" style="text-decoration:none;">
+        <i class="ti ti-history" aria-hidden="true"></i> Historique
+      </a>
+      <div class="nav-item notif-item" style="position:relative; cursor:pointer;" onclick="toggleNotifPanel()">
+        <i class="ti ti-bell" aria-hidden="true"></i> Notifications
+        {% if notifs_count %}<span class="notif-badge">{{ notifs_count }}</span>{% endif %}
+      </div>
+    </div>
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="logout-btn">⏻ Déconnexion</button>
+    </form>
+
+    <!-- Panel notifications -->
+    <div id="notif-panel" class="notif-panel" style="display:none;">
+      <div class="notif-header">
+        <span>Notifications</span>
+        <a href="{% url 'notifications_mark_all_read' %}" class="notif-all-read">Tout lire</a>
+      </div>
+      {% for n in notifs_list %}
+      <a href="{% url 'notification_mark_read' n.pk %}" class="notif-row notif-{{ n.type_notif }}">
+        <div class="notif-titre">{{ n.titre }}</div>
+        <div class="notif-msg">{{ n.message|truncatechars:80 }}</div>
+        <div class="notif-date">{{ n.cree_le|date:"d/m H:i" }}</div>
+      </a>
+      {% empty %}
+      <div class="notif-empty">Aucune notification non lue.</div>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <main class="main">
+    {% if messages %}
+      <div class="messages">
+        {% for message in messages %}
+          <div class="msg {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<div id="toast-stack" class="toast-stack"></div>
+<script>
+  // Notification "temps réel" réutilisable sur toutes les pages.
+  // window.showToast(message, { type: 'warning'|'success'|'danger', title, actionHtml, duration })
+  window.showToast = function (message, opts) {
+    opts = opts || {};
+    var type = opts.type || 'warning';
+    var icons = { success: '✅', danger: '⛔', warning: '🔒', info: 'ℹ️' };
+    var icon = icons[type] || '🔔';
+    var stack = document.getElementById('toast-stack');
+    if (!stack) return;
+
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.innerHTML =
+      '<div class="toast-icon">' + icon + '</div>' +
+      '<div class="toast-body">' +
+        (opts.title ? '<div class="toast-title">' + opts.title + '</div>' : '') +
+        '<div>' + message + '</div>' +
+        (opts.actionHtml ? '<div class="toast-actions">' + opts.actionHtml + '</div>' : '') +
+      '</div>' +
+      '<button type="button" class="toast-close" aria-label="Fermer">✕</button>';
+
+    function remove() {
+      toast.classList.add('toast-leave');
+      setTimeout(function () { toast.remove(); }, 280);
+    }
+    toast.querySelector('.toast-close').addEventListener('click', remove);
+    if (opts.duration !== 0) {
+      setTimeout(remove, opts.duration || 6000);
+    }
+    stack.appendChild(toast);
+  };
+
+  function toggleNotifPanel(){
+    var p = document.getElementById('notif-panel');
+    if(p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  }
+  document.addEventListener('click', function(e){
+    var panel = document.getElementById('notif-panel');
+    if(!panel) return;
+    var trigger = document.querySelector('.notif-item');
+    if(trigger && !trigger.contains(e.target) && !panel.contains(e.target)){
+      panel.style.display = 'none';
+    }
+  });
+</script>
+</body>
+</html>

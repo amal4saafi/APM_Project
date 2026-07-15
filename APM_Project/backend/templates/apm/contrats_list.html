@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Contrats — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Contrats {% if voir_archives %}— Archives{% endif %}</h1><div class="subtitle">{{ items.count }} contrat(s) {% if voir_archives %}archivé(s){% endif %}</div></div>
+  <div style="display:flex;gap:8px;">
+    {% if voir_archives %}
+      <a href="{% url 'contrats_list' %}" class="btn btn-outline">← Retour aux actifs</a>
+    {% else %}
+      <a href="{% url 'contrats_list' %}?archives=1" class="btn btn-outline">🗄 Archives</a>
+      {% if can_manage_patrimoine %}<a href="{% url 'contrats_create' %}" class="btn btn-primary">+ Nouveau contrat</a>{% endif %}
+    {% endif %}
+  </div>
+</div>
+<div class="cards-grid">
+  {% for it in items %}
+  <div class="dyn-card">
+    <div class="dc-icon dc-orange"><i class="ti ti-file-text" style="font-size:18px;color:#FF7A00;" aria-hidden="true"></i></div>
+    <div class="dc-title">{{ it.numero_contrat }}</div>
+    <div class="dc-sub">{{ it.id_application.nom|default:"—" }} — {{ it.id_fournisseur|default:"—" }}</div>
+    <div class="dc-stat" style="font-size:20px;margin-top:8px;">{{ it.cout_annuel }} DT</div>
+    <div class="dc-stat-lbl">Coût annuel</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px;">
+      {{ it.date_debut|date:"d/m/Y"|default:"—" }} → {{ it.date_fin|date:"d/m/Y"|default:"—" }}
+    </div>
+    {% if it.statut %}<span class="badge badge-muted" style="margin-top:6px;display:inline-block;">{{ it.statut }}</span>{% endif %}
+    {% if can_manage_patrimoine %}
+    <div class="dc-actions">
+      {% if voir_archives %}
+        <form method="post" action="{% url 'contrats_restore' it.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary btn-sm">Restaurer</button>
+        </form>
+      {% else %}
+        <a href="{% url 'contrats_edit' it.pk %}" class="btn btn-outline btn-sm">Modifier</a>
+        <a href="{% url 'contrats_delete' it.pk %}" class="btn btn-danger btn-sm">Archiver</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}<p class="helptext">{% if voir_archives %}Aucun contrat archivé.{% else %}Aucun contrat enregistré.{% endif %}</p>{% endfor %}
+</div>
+{% endblock %}

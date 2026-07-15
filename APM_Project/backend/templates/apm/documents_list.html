@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Documents — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Documents {% if voir_archives %}— Archives{% endif %}</h1><div class="subtitle">{{ items.count }} document(s) {% if voir_archives %}archivé(s){% endif %}</div></div>
+  <div style="display:flex;gap:8px;">
+    {% if voir_archives %}
+      <a href="{% url 'documents_list' %}" class="btn btn-outline">← Retour aux actifs</a>
+    {% else %}
+      <a href="{% url 'documents_list' %}?archives=1" class="btn btn-outline">🗄 Archives</a>
+      {% if can_manage_patrimoine %}<a href="{% url 'documents_create' %}" class="btn btn-primary">+ Nouveau document</a>{% endif %}
+    {% endif %}
+  </div>
+</div>
+<div class="cards-grid">
+  {% for it in items %}
+  <div class="dyn-card">
+    <div class="dc-icon {% if it.type_fichier == 'pdf' %}dc-red{% elif it.type_fichier == 'xlsx' %}dc-green{% elif it.type_fichier == 'docx' %}dc-blue{% else %}dc-gray{% endif %}">
+      {% if it.type_fichier == 'pdf' %}📕{% elif it.type_fichier == 'xlsx' %}📊{% elif it.type_fichier == 'docx' %}📘{% else %}📄{% endif %}
+    </div>
+    <div class="dc-title">{{ it.nom_fichier }}</div>
+    <div class="dc-sub">{{ it.id_application.nom|default:"—" }} — {{ it.categorie|default:"Sans catégorie" }}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px;">Ajouté le {{ it.date_upload|date:"d/m/Y" }}</div>
+    {% if can_manage_patrimoine %}
+    <div class="dc-actions">
+      {% if voir_archives %}
+        <form method="post" action="{% url 'documents_restore' it.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary btn-sm">Restaurer</button>
+        </form>
+      {% else %}
+        <a href="{% url 'documents_edit' it.pk %}" class="btn btn-outline btn-sm">Gérer fichiers</a>
+        <a href="{% url 'documents_delete' it.pk %}" class="btn btn-danger btn-sm">Archiver</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}<p class="helptext">{% if voir_archives %}Aucun document archivé.{% else %}Aucun document disponible.{% endif %}</p>{% endfor %}
+</div>
+{% endblock %}

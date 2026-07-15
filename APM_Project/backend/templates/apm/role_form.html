@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — APM{% endblock %}
+{% block content %}
+
+<div class="page-header"><h1>{{ title }}</h1></div>
+
+<div class="form-card">
+  <!-- Aide contextuelle : mapping type_role → droits recommandés -->
+  <div class="alert alert-info" id="role-help" style="display:none;margin-bottom:14px;"></div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <!-- Champs texte -->
+    {% for field in form %}
+      {% if field.field.widget.input_type != 'checkbox' %}
+        <div class="form-group">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<small class="helptext">{{ field.help_text }}</small>{% endif %}
+          {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- Cases à cocher regroupées -->
+    <div class="form-group">
+      <label style="display:block;margin-bottom:8px;font-weight:600;">Permissions</label>
+      <div class="permissions-grid">
+        {% for field in form %}
+          {% if field.field.widget.input_type == 'checkbox' %}
+            <label class="perm-item">
+              {{ field }}
+              <span>{{ field.label }}</span>
+              {% if field.help_text %}<small class="helptext">{{ field.help_text }}</small>{% endif %}
+            </label>
+            {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Enregistrer</button>
+    <a href="{% url 'roles_list' %}" class="btn btn-outline">Annuler</a>
+  </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var typeSelect = document.getElementById('id_type_role');
+  var helpBox = document.getElementById('role-help');
+  var msgs = {
+    'admin': "👤 <strong>Administrateur</strong> : gestion exclusive des utilisateurs et des rôles. N'a pas accès au patrimoine applicatif.",
+    'admin_systeme': "⚙️ <strong>Administrateur Système</strong> : consultation de tous les actifs (applications / environnements / SSL / domaines) en lecture seule + gestion de la capacité totale CPU/RAM.",
+    'membre_dsi': "🧩 <strong>Membre DSI</strong> : gestion complète du patrimoine applicatif (CRUD applications, environnements, SSL, domaines, contrats, documents). Pas de gestion des utilisateurs.",
+    'autre': ""
+  };
+  function updateHelp(){
+    var v = typeSelect ? typeSelect.value : '';
+    if(msgs[v]){
+      helpBox.innerHTML = msgs[v];
+      helpBox.style.display = 'block';
+    } else {
+      helpBox.style.display = 'none';
+    }
+  }
+  if(typeSelect){ typeSelect.addEventListener('change', updateHelp); updateHelp(); }
+});
+</script>
+
+{% endblock %}

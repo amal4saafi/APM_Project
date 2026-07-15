@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Rôles — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Gestion des rôles</h1></div>
+  <a href="{% url 'role_create' %}" class="btn btn-primary">+ Nouveau rôle</a>
+</div>
+
+<div class="cards-grid">
+  {% for r in roles %}
+  <div class="dyn-card">
+    <div class="dc-icon {% if r.type_role == 'admin' %}dc-blue{% elif r.type_role == 'admin_systeme' %}dc-orange{% elif r.type_role == 'membre_dsi' %}dc-green{% else %}dc-gray{% endif %}">
+      <i class="ti ti-shield" style="font-size:18px;" aria-hidden="true"></i>
+    </div>
+    <div class="dc-title">{{ r.nom }}</div>
+    <div class="dc-sub">{{ r.description|default:"—" }}</div>
+    <div style="margin:8px 0;">
+      {% if r.type_role == 'admin' %}<span class="badge badge-primary">Admin</span>
+      {% elif r.type_role == 'admin_systeme' %}<span class="badge badge-info">Admin Système</span>
+      {% elif r.type_role == 'membre_dsi' %}<span class="badge badge-success">Membre DSI</span>
+      {% else %}<span class="badge badge-muted">{{ r.get_type_role_display }}</span>{% endif %}
+    </div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.8;">
+      Gérer users : {% if r.peut_gerer_users %}✅{% else %}❌{% endif %}<br>
+      Gérer apps : {% if r.peut_gerer_apps %}✅{% else %}❌{% endif %}<br>
+      Dashboard admin : {% if r.peut_voir_dashboard_admin %}✅{% else %}❌{% endif %}<br>
+      Gérer ressources : {% if r.peut_gerer_ressources %}✅{% else %}❌{% endif %}
+    </div>
+    <div class="dc-actions">
+      <a href="{% url 'role_edit' r.pk %}" class="btn btn-outline btn-sm">Modifier</a>
+      <a href="{% url 'role_delete' r.pk %}" class="btn btn-danger btn-sm">Supprimer</a>
+    </div>
+  </div>
+  {% empty %}<p class="helptext">Aucun rôle défini.</p>{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Environnements — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Environnements {% if voir_archives %}— Archives{% endif %}</h1><div class="subtitle">{{ envs.count }} environnement(s) {% if voir_archives %}archivé(s){% else %}répertorié(s){% endif %}</div></div>
+  <div style="display:flex;gap:8px;">
+    {% if voir_archives %}
+      <a href="{% url 'environnements_list' %}" class="btn btn-outline">← Retour aux actifs</a>
+    {% else %}
+      <a href="{% url 'environnements_list' %}?archives=1" class="btn btn-outline">🗄 Archives</a>
+      {% if can_manage_patrimoine %}<a href="{% url 'environnement_create' %}" class="btn btn-primary">+ Nouvel environnement</a>{% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<div class="cards-grid">
+  {% for env in envs %}
+  <div class="dyn-card">
+    <div class="dc-icon dc-gray"><i class="ti ti-server" style="font-size:18px;color:#5F5E5A;" aria-hidden="true"></i></div>
+    <div class="dc-title">{{ env.nom }}</div>
+    <div class="dc-sub">
+      {% if env.id_application %}{{ env.id_application.nom }}
+      {% else %}<span style="color:#FA5252;font-weight:600;">Sans application</span>
+        {% if can_manage_patrimoine and not voir_archives %}<a href="{% url 'application_create' %}?env={{ env.pk }}" class="btn btn-sm btn-accent" style="margin-left:4px;">+ Lier</a>{% endif %}
+      {% endif %}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;">
+      <span class="badge badge-primary">{{ env.cpu }} vCPU</span>
+      <span class="badge badge-info">{{ env.ram }} Go RAM</span>
+      {% if env.docker %}<span class="badge badge-success">Docker</span>{% endif %}
+      {% if env.kubernetes %}<span class="badge badge-success">K8s</span>{% endif %}
+      {% if env.exige_ssl %}<span class="badge badge-primary">SSL requis</span>{% endif %}
+    </div>
+    <div style="font-size:12px;color:var(--muted);">
+      {{ env.url|default:"—" }}<br>{{ env.os|default:"—" }}
+    </div>
+    {% if can_manage_patrimoine %}
+    <div class="dc-actions">
+      {% if voir_archives %}
+        <form method="post" action="{% url 'environnement_restore' env.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary btn-sm">Restaurer</button>
+        </form>
+      {% else %}
+        <a href="{% url 'environnement_edit' env.pk %}" class="btn btn-outline btn-sm">Modifier</a>
+        <a href="{% url 'environnement_delete' env.pk %}" class="btn btn-danger btn-sm">Archiver</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}<p class="helptext">{% if voir_archives %}Aucun environnement archivé.{% else %}Aucun environnement.{% endif %}</p>{% endfor %}
+</div>
+{% endblock %}

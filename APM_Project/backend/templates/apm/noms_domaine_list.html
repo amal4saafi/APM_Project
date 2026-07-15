@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Noms de domaine — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Noms de domaine {% if voir_archives %}— Archives{% endif %}</h1><div class="subtitle">{{ items.count }} domaine(s) {% if voir_archives %}archivé(s){% endif %}</div></div>
+  <div style="display:flex;gap:8px;">
+    {% if voir_archives %}
+      <a href="{% url 'noms_domaine_list' %}" class="btn btn-outline">← Retour aux actifs</a>
+    {% else %}
+      <a href="{% url 'noms_domaine_list' %}?archives=1" class="btn btn-outline">🗄 Archives</a>
+      {% if can_manage_patrimoine %}<a href="{% url 'noms_domaine_create' %}" class="btn btn-primary">+ Nouveau nom de domaine</a>{% endif %}
+    {% endif %}
+  </div>
+</div>
+<div class="cards-grid">
+  {% for it in items %}
+  <div class="dyn-card">
+    <div class="dc-icon dc-blue"><i class="ti ti-world" style="font-size:18px;color:#4C6EF5;" aria-hidden="true"></i></div>
+    <div class="dc-title">{{ it.nom_domaine }}</div>
+    <div class="dc-sub">{{ it.id_application.nom|default:"—" }}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px;">
+      Registrar : {{ it.registrar|default:"—" }}<br>
+      Expiration : {{ it.date_expiration|date:"d/m/Y"|default:"—" }}
+    </div>
+    {% if it.renouvellement_auto %}<span class="badge badge-success" style="margin-top:6px;display:inline-block;">Renouvellement auto</span>{% endif %}
+    {% if can_manage_patrimoine %}
+    <div class="dc-actions">
+      {% if voir_archives %}
+        <form method="post" action="{% url 'noms_domaine_restore' it.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary btn-sm">Restaurer</button>
+        </form>
+      {% else %}
+        <a href="{% url 'noms_domaine_edit' it.pk %}" class="btn btn-outline btn-sm">Modifier</a>
+        <a href="{% url 'noms_domaine_delete' it.pk %}" class="btn btn-danger btn-sm">Archiver</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}<p class="helptext">{% if voir_archives %}Aucun nom de domaine archivé.{% else %}Aucun nom de domaine enregistré.{% endif %}</p>{% endfor %}
+</div>
+{% endblock %}

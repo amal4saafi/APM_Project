@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — APM{% endblock %}
+{% block content %}
+
+<div class="page-header"><h1>{{ title }}</h1></div>
+
+<div class="alert alert-info" style="margin-bottom:16px;">
+  Les champs <strong>CPU</strong> et <strong>RAM</strong> alloués seront déduits de la capacité totale du parc.
+  L'<strong>Application</strong> peut être liée ultérieurement si elle n'existe pas encore.
+</div>
+
+<div class="form-card">
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}">
+        {% if field.field.widget.input_type == 'checkbox' %}
+          {{ field }}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% else %}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+        {% endif %}
+        {% if field.help_text %}<small class="helptext">{{ field.help_text }}</small>{% endif %}
+        {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Enregistrer</button>
+    <a href="{% url 'environnements_list' %}" class="btn btn-outline">Annuler</a>
+  </form>
+</div>
+
+<div id="ssl-prompt" style="display:none; margin-top:1rem;"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var envId = '{{ form.instance.pk|default:"" }}';
+  var checkbox = document.querySelector('input[name="exige_ssl"]');
+  var prompt = document.getElementById('ssl-prompt');
+  var sslCreateUrl = '{% url "ssl_create" %}';
+  var cpuInput = document.getElementById('id_cpu');
+  var ramInput = document.getElementById('id_ram');
+
+  // ---------- alerte inline SSL ----------
+  function updateSslPrompt(){
+    if(!checkbox) return;
+    if(checkbox.checked){
+      prompt.innerHTML = envId
+        ? '<div class="alert alert-info">Cet environnement exige un certificat SSL.&nbsp;<a href="' + sslCreateUrl + '?env=' + envId + '" class="btn btn-sm btn-primary">Ajouter un certificat SSL</a></div>'
+        : '<div class="alert alert-info">Après enregistrement, vous serez invité à ajouter un certificat SSL.</div>';
+      prompt.style.display = 'block';
+    } else {
+      prompt.style.display = 'none';
+    }
+  }
+
+  // ---------- toast SSL ----------
+  function notifySsl(){
+    if(!checkbox || !checkbox.checked) return;
+    var actionHtml = envId
+      ? '<a href="' + sslCreateUrl + '?env=' + envId + '" class="btn btn-sm btn-primary" style="margin-top:6px;">Ajouter le certificat SSL</a>'
+      : '';
+    window.showToast(
+      "Cet environnement exige un certificat SSL. " +
+        (envId ? "Configurez-le maintenant." : "Il vous sera demandé après l'enregistrement."),
+      { type: 'warning', title: 'Certificat SSL requis', actionHtml: actionHtml, duration: 8000 }
+    );
+  }
+
+  // ---------- toast Ressources (CPU/RAM) ----------
+  function notifyRessource(type, val){
+    if(!val || val <= 0) return;
+    window.showToast(
+      type + " alloué : " + val + (type === 'CPU' ? ' vCPU' : ' Go') + " déduits de la capacité totale du parc.",
+      { type: 'info', title: 'Ressource allouée', duration: 4000 }
+    );
+  }
+
+  if(checkbox){
+    checkbox.addEventListener('change', function(){ updateSslPrompt(); if(checkbox.checked) notifySsl(); });
+    updateSslPrompt();
+  }
+  if(cpuInput){ cpuInput.addEventListener('blur', function(){ notifyRessource('CPU', parseInt(cpuInput.value)); }); }
+  if(ramInput){ ramInput.addEventListener('blur', function(){ notifyRessource('RAM', parseInt(ramInput.value)); }); }
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Administrateur Système — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Administrateur Système</h1><div class="subtitle">Patrimoine (lecture) + capacité CPU / RAM</div></div>
+  <a href="{% url 'ressources_edit' %}" class="btn btn-accent">⚙️ Modifier capacité</a>
+</div>
+
+<!-- Jauges CPU/RAM -->
+<div class="panel-grid" style="margin-bottom:16px;">
+  <div class="resource-card">
+    <h3>🧮 CPU</h3>
+    <div class="resource-figures"><span>Utilisé : <strong>{{ ressources.cpu_utilise }}</strong> vCPU</span><span>Restant : <strong>{{ ressources.cpu_restant }}</strong> / {{ ressources.cpu_total }}</span></div>
+    <div class="gauge-track"><div class="gauge-fill {% if ressources.cpu_pourcentage >= 85 %}gauge-danger{% endif %}" style="width:{{ ressources.cpu_pourcentage }}%"></div></div>
+    <small class="helptext">{{ ressources.cpu_pourcentage }}% utilisé</small>
+  </div>
+  <div class="resource-card">
+    <h3>💾 RAM</h3>
+    <div class="resource-figures"><span>Utilisé : <strong>{{ ressources.ram_utilise }}</strong> Go</span><span>Restant : <strong>{{ ressources.ram_restant }}</strong> / {{ ressources.ram_total }} Go</span></div>
+    <div class="gauge-track"><div class="gauge-fill {% if ressources.ram_pourcentage >= 85 %}gauge-danger{% endif %}" style="width:{{ ressources.ram_pourcentage }}%"></div></div>
+    <small class="helptext">{{ ressources.ram_pourcentage }}% utilisé</small>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card"><div class="label">Applications</div><div class="value primary">{{ total_apps }}</div></div>
+  <div class="stat-card"><div class="label">Environnements</div><div class="value">{{ total_env }}</div></div>
+  <div class="stat-card"><div class="label">Certificats SSL</div><div class="value primary">{{ total_ssl }}</div></div>
+  <div class="stat-card"><div class="label">SSL expirés</div><div class="value danger">{{ ssl_expires }}</div></div>
+</div>
+
+<!-- Charts -->
+<div class="chart-wrap">
+  <div class="chart-card"><h4>Applications par statut</h4><div class="chart-canvas-box"><canvas id="chartAppStatut"></canvas></div></div>
+  <div class="chart-card"><h4>CPU par environnement</h4><div class="chart-canvas-box"><canvas id="chartCpu"></canvas></div></div>
+  <div class="chart-card"><h4>RAM par environnement</h4><div class="chart-canvas-box"><canvas id="chartRam"></canvas></div></div>
+</div>
+
+<!-- Cards applications (lecture) -->
+<div class="card" style="margin-bottom:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <h3>Applications disponibles</h3>
+    <a href="{% url 'applications_list' %}" class="btn btn-outline btn-sm">Voir tout</a>
+  </div>
+  <div class="cards-grid">
+    {% for app in apps %}
+    <div class="dyn-card">
+      <div class="dc-icon dc-blue"><i class="ti ti-apps" style="font-size:18px;color:#4C6EF5;" aria-hidden="true"></i></div>
+      <div class="dc-title">{{ app.nom }}</div>
+      <div class="dc-sub">{{ app.direction_metier|default:"Direction non renseignée" }}</div>
+      {% if app.critere == 'eleve' %}<span class="badge badge-danger">Critique</span>{% else %}<span class="badge badge-muted">Standard</span>{% endif %}
+      {% if app.statut %}<span class="badge badge-success" style="margin-left:4px;">Active</span>{% else %}<span class="badge badge-danger" style="margin-left:4px;">Inactive</span>{% endif %}
+      {% if app.exige_ssl %}<span class="badge badge-primary" style="margin-left:4px;">SSL</span>{% endif %}
+    </div>
+    {% empty %}<p class="helptext">Aucune application.</p>{% endfor %}
+  </div>
+</div>
+
+<!-- Cards environnements (lecture) -->
+<div class="card" style="margin-bottom:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <h3>Environnements disponibles</h3>
+    <a href="{% url 'environnements_list' %}" class="btn btn-outline btn-sm">Voir tout</a>
+  </div>
+  <div class="cards-grid">
+    {% for env in envs %}
+    <div class="dyn-card">
+      <div class="dc-icon dc-gray"><i class="ti ti-server" style="font-size:18px;color:#5F5E5A;" aria-hidden="true"></i></div>
+      <div class="dc-title">{{ env.nom }}</div>
+      <div class="dc-sub">{{ env.id_application.nom|default:"Sans application" }}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;">
+        <span>CPU : <strong>{{ env.cpu }}</strong> vCPU</span> &nbsp;|&nbsp;
+        <span>RAM : <strong>{{ env.ram }}</strong> Go</span>
+      </div>
+      {% if env.exige_ssl %}<span class="badge badge-primary" style="margin-top:6px;display:inline-block;">SSL</span>{% endif %}
+    </div>
+    {% empty %}<p class="helptext">Aucun environnement.</p>{% endfor %}
+  </div>
+</div>
+
+<!-- Historique -->
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h3>Historique des actions</h3>
+    <a href="{% url 'historique_page' %}" class="btn btn-outline btn-sm">Tout l'historique</a>
+  </div>
+  <div class="histo-list">
+    {% for a in historique %}
+    <div class="histo-item">
+      <div class="histo-dot {% if 'Création' in a.action %}hd-green{% elif 'Suppression' in a.action %}hd-red{% elif 'Modification' in a.action %}hd-orange{% endif %}"></div>
+      <div class="histo-body">
+        <div class="histo-action">{{ a.action }}</div>
+        <div class="histo-meta">{{ a.utilisateur.username|default:"Système" }} — {{ a.date_action|date:"d/m/Y H:i" }}</div>
+      </div>
+    </div>
+    {% empty %}<p class="helptext">Aucune action enregistrée.</p>{% endfor %}
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+var PIE_OPTS={plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},maintainAspectRatio:false};
+var COLORS=['#12B886','#FA5252','#F59F00','#4C6EF5','#FF7A00','#748FFC'];
+var appStatut={{ app_statut_data|safe }};
+new Chart(document.getElementById('chartAppStatut'),{type:'doughnut',data:{labels:appStatut.labels,datasets:[{data:appStatut.values,backgroundColor:COLORS}]},options:PIE_OPTS});
+var cpuData={{ cpu_data|safe }};
+new Chart(document.getElementById('chartCpu'),{type:'bar',data:{labels:cpuData.labels,datasets:[{label:'vCPU',data:cpuData.values,backgroundColor:'#4C6EF5',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}},maintainAspectRatio:false}});
+var ramData={{ ram_data|safe }};
+new Chart(document.getElementById('chartRam'),{type:'bar',data:{labels:ramData.labels,datasets:[{label:'Go RAM',data:ramData.values,backgroundColor:'#FF7A00',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}},maintainAspectRatio:false}});
+</script>
+{% endblock %}

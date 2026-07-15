@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Applications — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Applications {% if voir_archives %}— Archives{% endif %}</h1><div class="subtitle">{{ apps.count }} application(s) {% if voir_archives %}archivée(s){% else %}répertoriée(s){% endif %}</div></div>
+  <div style="display:flex;gap:8px;">
+    {% if voir_archives %}
+      <a href="{% url 'applications_list' %}" class="btn btn-outline">← Retour aux actives</a>
+    {% else %}
+      <a href="{% url 'applications_list' %}?archives=1" class="btn btn-outline">🗄 Archives</a>
+      {% if can_manage_patrimoine %}<a href="{% url 'application_create' %}" class="btn btn-primary">+ Nouvelle application</a>{% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<div class="cards-grid">
+  {% for app in apps %}
+  <div class="dyn-card">
+    <div class="dc-icon {% if app.critere == 'eleve' %}dc-red{% else %}dc-blue{% endif %}">
+      <i class="ti ti-apps" style="font-size:18px;color:{% if app.critere == 'eleve' %}#FA5252{% else %}#4C6EF5{% endif %};" aria-hidden="true"></i>
+    </div>
+    <div class="dc-title">{{ app.nom }}</div>
+    <div class="dc-sub">{{ app.direction_metier|default:"Direction non renseignée" }}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;">
+      {% if app.critere == 'eleve' %}<span class="badge badge-danger">Critique</span>{% else %}<span class="badge badge-muted">Standard</span>{% endif %}
+      {% if app.statut %}<span class="badge badge-success">Active</span>{% else %}<span class="badge badge-danger">Inactive</span>{% endif %}
+      {% if app.exige_ssl %}<span class="badge badge-primary">SSL requis</span>{% endif %}
+      <span class="badge {% if app.type_app == 'externe' %}badge-warning{% else %}badge-info{% endif %}">{{ app.get_type_app_display }}</span>
+    </div>
+    <div style="font-size:12px;color:var(--muted);">
+      Mise en prod : {{ app.date_mise_prod|date:"d/m/Y"|default:"—" }}<br>
+      Propriétaire : {{ app.id_user|default:"—" }}<br>
+      {{ app.nombre_utilisateurs }} utilisateur(s)
+      {% if app.type_app == 'externe' and app.date_fin_vie %}
+        <br>
+        {% with j=app.jours_avant_expiration %}
+          {% if j < 0 %}<span style="color:#FA5252;font-weight:600;">Expirée depuis {{ j|cut:"-" }} j</span>
+          {% elif j <= 30 %}<span style="color:#F59F00;font-weight:600;">Expire dans {{ j }} j</span>
+          {% else %}<span>Fin de vie dans {{ j }} j</span>{% endif %}
+        {% endwith %}
+      {% endif %}
+    </div>
+    {% if can_manage_patrimoine %}
+    <div class="dc-actions">
+      {% if voir_archives %}
+        <form method="post" action="{% url 'application_restore' app.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary btn-sm">Restaurer</button>
+        </form>
+      {% else %}
+        <a href="{% url 'application_edit' app.pk %}" class="btn btn-outline btn-sm">Modifier</a>
+        <a href="{% url 'application_delete' app.pk %}" class="btn btn-danger btn-sm">Archiver</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}<p class="helptext">{% if voir_archives %}Aucune application archivée.{% else %}Aucune application.{% endif %}</p>{% endfor %}
+</div>
+{% endblock %}

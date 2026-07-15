@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Mon profil — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Mon profil</h1><div class="subtitle">Coordonnées, actions et notifications</div></div>
+  <div class="toolbar">
+    <a href="{% url 'profil_edit' %}" class="btn btn-primary">Modifier le profil</a>
+    <a href="{% url 'profil_reset_mdp' %}" class="btn btn-accent">🔑 Changer le mot de passe</a>
+  </div>
+</div>
+
+<div class="panel-grid">
+  <!-- Carte identité -->
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+      {% if profil.photo %}<img src="{{ profil.photo.url }}" class="profil-avatar">
+      {% else %}<div class="profil-avatar-placeholder">{{ user.username|first|upper }}</div>{% endif %}
+      <div>
+        <div style="font-size:18px;font-weight:600;color:var(--text);">{{ user.get_full_name|default:user.username }}</div>
+        <div style="font-size:13px;color:var(--muted);">@{{ user.username }}</div>
+        {% if user.role %}
+          {% if user.role.type_role == 'admin' %}<span class="badge badge-primary">{{ user.role.nom }}</span>
+          {% elif user.role.type_role == 'admin_systeme' %}<span class="badge badge-info">{{ user.role.nom }}</span>
+          {% elif user.role.type_role == 'membre_dsi' %}<span class="badge badge-success">{{ user.role.nom }}</span>
+          {% else %}<span class="badge badge-muted">{{ user.role.nom }}</span>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;">
+      <tr><td style="color:var(--muted);padding:5px 0;width:40%;">Email</td><td>{{ user.email|default:"—" }}</td></tr>
+      <tr><td style="color:var(--muted);padding:5px 0;">Téléphone</td><td>{{ user.telephone|default:"—" }}</td></tr>
+      <tr><td style="color:var(--muted);padding:5px 0;">Département</td><td>{{ user.departement|default:"—" }}</td></tr>
+      <tr><td style="color:var(--muted);padding:5px 0;">Poste</td><td>{{ profil.poste|default:"—" }}</td></tr>
+      {% if profil.bio %}<tr><td style="color:var(--muted);padding:5px 0;">Bio</td><td>{{ profil.bio }}</td></tr>{% endif %}
+      {% if profil.linkedin %}<tr><td style="color:var(--muted);padding:5px 0;">LinkedIn</td><td><a href="{{ profil.linkedin }}" target="_blank">Voir le profil</a></td></tr>{% endif %}
+      <tr><td style="color:var(--muted);padding:5px 0;">Membre depuis</td><td>{{ user.date_joined|date:"d/m/Y" }}</td></tr>
+    </table>
+  </div>
+
+  <!-- Notifications -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3>Notifications</h3>
+      <a href="{% url 'notifications_mark_all_read' %}" class="btn btn-outline btn-sm">Tout lire</a>
+    </div>
+    <div class="histo-list">
+      {% for n in mes_notifs %}
+      <a href="{% url 'notification_mark_read' n.pk %}" style="text-decoration:none;display:block;">
+        <div class="histo-item">
+          <div class="histo-dot {% if n.type_notif == 'success' %}hd-green{% elif n.type_notif == 'danger' %}hd-red{% elif n.type_notif == 'warning' %}hd-orange{% endif %}"></div>
+          <div class="histo-body">
+            <div class="histo-action" style="{% if not n.lu %}font-weight:700;{% endif %}">{{ n.titre }}</div>
+            <div class="histo-meta">{{ n.message|truncatechars:70 }} — {{ n.cree_le|date:"d/m H:i" }}</div>
+          </div>
+        </div>
+      </a>
+      {% empty %}<p class="helptext">Aucune notification.</p>{% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Mes actions -->
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h3>Mes actions récentes</h3>
+    <a href="{% url 'historique_page' %}?user={{ user.username }}" class="btn btn-outline btn-sm">Tout voir</a>
+  </div>
+  <div class="histo-list">
+    {% for a in mes_actions %}
+    <div class="histo-item">
+      <div class="histo-dot {% if 'Création' in a.action or 'Upload' in a.action %}hd-green{% elif 'Suppression' in a.action %}hd-red{% else %}hd-orange{% endif %}"></div>
+      <div class="histo-body">
+        <div class="histo-action">{{ a.action }}</div>
+        <div class="histo-meta">{{ a.date_action|date:"d/m/Y H:i" }}{% if a.objet_repr %} — <em>{{ a.objet_repr }}</em>{% endif %}</div>
+      </div>
+    </div>
+    {% empty %}<p class="helptext">Aucune action enregistrée.</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — APM{% endblock %}
+{% block content %}
+
+<div class="page-header"><h1>{{ title }}</h1></div>
+
+<div class="form-card">
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}">
+        {% if field.field.widget.input_type == 'checkbox' %}
+          {{ field }}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% else %}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+        {% endif %}
+        {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Enregistrer</button>
+    <a href="{% url 'noms_domaine_list' %}" class="btn btn-outline">Annuler</a>
+  </form>
+</div>
+
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Dashboard DSI — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Bonjour {{ user.first_name|default:user.username }} 👋</h1><div class="subtitle">Membre DSI — Gestion du patrimoine applicatif</div></div>
+  <div class="toolbar">
+    <a href="{% url 'environnement_create' %}" class="btn btn-primary">+ Environnement</a>
+    <a href="{% url 'application_create' %}" class="btn btn-outline">+ Application</a>
+  </div>
+</div>
+
+{% if envs_sans_app %}
+<div class="alert alert-info">⚠️ {{ envs_sans_app }} environnement(s) sans application liée.
+  <a href="{% url 'environnements_list' %}" class="btn btn-sm btn-primary" style="margin-left:8px;">Voir</a>
+</div>
+{% endif %}
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card"><div class="label">Applications</div><div class="value primary">{{ total_apps }}</div></div>
+  <div class="stat-card"><div class="label">Critiques</div><div class="value warning">{{ apps_critiques }}</div></div>
+  <div class="stat-card"><div class="label">Environnements</div><div class="value">{{ total_env }}</div></div>
+  <div class="stat-card"><div class="label">Certificats SSL</div><div class="value primary">{{ total_ssl }}</div></div>
+  <div class="stat-card"><div class="label">SSL expirés</div><div class="value danger">{{ ssl_expires }}</div></div>
+  <div class="stat-card"><div class="label">Contrats actifs</div><div class="value success">{{ total_contrats }}</div></div>
+</div>
+
+<!-- Charts -->
+<div class="chart-wrap">
+  <div class="chart-card"><h4>Criticité des applications</h4><div class="chart-canvas-box"><canvas id="chartCritique"></canvas></div></div>
+  <div class="chart-card"><h4>Statut SSL</h4><div class="chart-canvas-box"><canvas id="chartSsl"></canvas></div></div>
+  <div class="chart-card"><h4>Env par type</h4><div class="chart-canvas-box"><canvas id="chartEnv"></canvas></div></div>
+  <div class="chart-card"><h4>Activité (7 jours)</h4><div class="chart-canvas-box"><canvas id="chartActivite"></canvas></div></div>
+</div>
+
+<!-- Cards Applications -->
+<div class="card" style="margin-bottom:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <h3>Applications</h3>
+    <a href="{% url 'application_create' %}" class="btn btn-primary btn-sm">+ Ajouter</a>
+  </div>
+  <div class="cards-grid">
+    {% for app in apps %}
+    <div class="dyn-card">
+      <div class="dc-icon {% if app.critere == 'eleve' %}dc-red{% else %}dc-blue{% endif %}">
+        <i class="ti ti-apps" style="font-size:18px;color:{% if app.critere == 'eleve' %}#FA5252{% else %}#4C6EF5{% endif %};" aria-hidden="true"></i>
+      </div>
+      <div class="dc-title">{{ app.nom }}</div>
+      <div class="dc-sub">{{ app.direction_metier|default:"—" }}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin:6px 0;">
+        {% if app.critere == 'eleve' %}<span class="badge badge-danger">Critique</span>{% else %}<span class="badge badge-muted">Standard</span>{% endif %}
+        {% if app.statut %}<span class="badge badge-success">Active</span>{% else %}<span class="badge badge-danger">Inactive</span>{% endif %}
+        {% if app.exige_ssl %}<span class="badge badge-primary">SSL</span>{% endif %}
+      </div>
+      <div class="dc-actions">
+        <a href="{% url 'application_edit' app.pk %}" class="btn btn-outline btn-sm">Modifier</a>
+        <a href="{% url 'application_delete' app.pk %}" class="btn btn-danger btn-sm">Supprimer</a>
+      </div>
+    </div>
+    {% empty %}<p class="helptext">Aucune application. <a href="{% url 'application_create' %}">En créer une</a>.</p>{% endfor %}
+  </div>
+</div>
+
+<!-- Cards Environnements -->
+<div class="card" style="margin-bottom:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <h3>Environnements</h3>
+    <a href="{% url 'environnement_create' %}" class="btn btn-primary btn-sm">+ Ajouter</a>
+  </div>
+  <div class="cards-grid">
+    {% for env in envs %}
+    <div class="dyn-card {% if not env.id_application %}dyn-card-warn{% endif %}">
+      <div class="dc-icon dc-gray"><i class="ti ti-server" style="font-size:18px;color:#5F5E5A;" aria-hidden="true"></i></div>
+      <div class="dc-title">{{ env.nom }}</div>
+      <div class="dc-sub">
+        {% if env.id_application %}{{ env.id_application.nom }}
+        {% else %}<span style="color:#FA5252;font-weight:600;">Sans application</span>
+          <a href="{% url 'application_create' %}?env={{ env.pk }}" class="btn btn-sm btn-accent" style="margin-left:4px;font-size:10px;padding:2px 6px;">+ Lier</a>
+        {% endif %}
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">CPU: <b>{{ env.cpu }}</b> vCPU | RAM: <b>{{ env.ram }}</b> Go</div>
+      {% if env.exige_ssl %}<span class="badge badge-primary" style="margin-top:4px;display:inline-block;">SSL requis</span>{% endif %}
+      <div class="dc-actions">
+        <a href="{% url 'environnement_edit' env.pk %}" class="btn btn-outline btn-sm">Modifier</a>
+        <a href="{% url 'environnement_delete' env.pk %}" class="btn btn-danger btn-sm">Supprimer</a>
+      </div>
+    </div>
+    {% empty %}<p class="helptext">Aucun environnement.</p>{% endfor %}
+  </div>
+</div>
+
+<!-- Cards SSL -->
+{% if ssl_items %}
+<div class="card" style="margin-bottom:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <h3>Certificats SSL</h3>
+    <a href="{% url 'ssl_create' %}" class="btn btn-primary btn-sm">+ Ajouter</a>
+  </div>
+  <div class="cards-grid">
+    {% for s in ssl_items %}
+    <div class="dyn-card">
+      <div class="dc-icon dc-blue"><i class="ti ti-lock" style="font-size:18px;color:#4C6EF5;" aria-hidden="true"></i></div>
+      <div class="dc-title">{{ s.domaine }}</div>
+      <div class="dc-sub">Expire : {{ s.date_expiration|date:"d/m/Y"|default:"—" }}</div>
+      {% if s.statut == 'expiré' %}<span class="badge badge-danger">Expiré</span>
+      {% elif s.statut == 'expiration_30' %}<span class="badge badge-info">Expire &lt; 30j</span>
+      {% else %}<span class="badge badge-success">Valide</span>{% endif %}
+      <div class="dc-actions">
+        <a href="{% url 'ssl_edit' s.pk %}" class="btn btn-outline btn-sm">Modifier</a>
+        <a href="{% url 'ssl_delete' s.pk %}" class="btn btn-danger btn-sm">Supprimer</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Historique du jour -->
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h3>Historique des actions</h3>
+    <a href="{% url 'historique_page' %}" class="btn btn-outline btn-sm">Tout voir</a>
+  </div>
+  <div class="histo-list">
+    {% for a in historique %}
+    <div class="histo-item">
+      <div class="histo-dot {% if 'Création' in a.action or 'Ajout' in a.action %}hd-green{% elif 'Suppression' in a.action %}hd-red{% elif 'Modification' in a.action or 'Upload' in a.action %}hd-orange{% endif %}"></div>
+      <div class="histo-body">
+        <div class="histo-action">{{ a.action }}</div>
+        <div class="histo-meta">{{ a.utilisateur.username|default:"Système" }} — {{ a.date_action|date:"d/m/Y H:i" }}{% if a.objet_repr %} — <em>{{ a.objet_repr }}</em>{% endif %}</div>
+      </div>
+    </div>
+    {% empty %}<p class="helptext">Aucune action enregistrée.</p>{% endfor %}
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+var OPTS={plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},maintainAspectRatio:false};
+var C=['#4C6EF5','#FF7A00','#12B886','#FA5252','#F59F00'];
+var critiqueData={{ critique_data|safe }};
+new Chart(document.getElementById('chartCritique'),{type:'doughnut',data:{labels:critiqueData.labels,datasets:[{data:critiqueData.values,backgroundColor:['#FA5252','#4C6EF5','#F59F00']}]},options:OPTS});
+var sslData={{ ssl_data|safe }};
+new Chart(document.getElementById('chartSsl'),{type:'doughnut',data:{labels:sslData.labels,datasets:[{data:sslData.values,backgroundColor:['#12B886','#F59F00','#FA5252']}]},options:OPTS});
+var envData={{ env_type_data|safe }};
+new Chart(document.getElementById('chartEnv'),{type:'bar',data:{labels:envData.labels,datasets:[{label:'Envs',data:envData.values,backgroundColor:'#4C6EF5',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},maintainAspectRatio:false}});
+var actData={{ activite_data|safe }};
+new Chart(document.getElementById('chartActivite'),{type:'line',data:{labels:actData.labels,datasets:[{label:'Actions',data:actData.values,borderColor:'#FF7A00',backgroundColor:'rgba(255,122,0,.1)',tension:.4,fill:true}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},maintainAspectRatio:false}});
+</script>
+{% endblock %}

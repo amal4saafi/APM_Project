@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Capacité CPU / RAM — APM{% endblock %}
+{% block content %}
+
+<div class="page-header"><h1>Capacité totale CPU / RAM</h1></div>
+
+<div class="form-card">
+  <p class="helptext" style="margin-bottom:16px;">
+    Actuellement alloué aux environnements : <strong>{{ ressources.cpu_utilise }}</strong> vCPU
+    et <strong>{{ ressources.ram_utilise }}</strong> Go de RAM.
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="form-group">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Enregistrer</button>
+    <a href="{% url 'dashboard_systeme' %}" class="btn btn-outline">Annuler</a>
+  </form>
+</div>
+
+{% endblock %}

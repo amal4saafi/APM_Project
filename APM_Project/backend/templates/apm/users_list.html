@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Utilisateurs — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Gestion des utilisateurs</h1><div class="subtitle">{{ users.count }} utilisateur(s)</div></div>
+  <div class="toolbar">
+    <form method="get"><input class="search-input" type="text" name="q" value="{{ q }}" placeholder="Rechercher..."></form>
+    <a href="{% url 'users_export_excel' %}" class="btn btn-outline">⬇ Export</a>
+    <a href="{% url 'users_import_excel' %}" class="btn btn-outline">⬆ Import</a>
+    <a href="{% url 'user_create' %}" class="btn btn-primary">+ Nouvel utilisateur</a>
+  </div>
+</div>
+
+<div class="cards-grid">
+  {% for u in users %}
+  <div class="dyn-card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      {% if u.profil.photo %}<img src="{{ u.profil.photo.url }}" class="profil-avatar" style="width:44px;height:44px;">
+      {% else %}<div class="profil-avatar-placeholder" style="width:44px;height:44px;font-size:18px;">{{ u.username|first|upper }}</div>{% endif %}
+      <div>
+        <div class="dc-title">{{ u.get_full_name|default:u.username }}</div>
+        <div class="dc-sub">@{{ u.username }}</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">
+      {{ u.email|default:"Sans email" }}<br>{{ u.departement|default:"—" }}
+    </div>
+    <div style="margin-bottom:8px;">
+      {% if u.role %}
+        {% if u.role.type_role == 'admin' %}<span class="badge badge-primary">{{ u.role.nom }}</span>
+        {% elif u.role.type_role == 'admin_systeme' %}<span class="badge badge-info">{{ u.role.nom }}</span>
+        {% elif u.role.type_role == 'membre_dsi' %}<span class="badge badge-success">{{ u.role.nom }}</span>
+        {% else %}<span class="badge badge-muted">{{ u.role.nom }}</span>{% endif %}
+      {% else %}<span class="badge badge-muted">Sans rôle</span>{% endif %}
+      {% if u.is_active %}<span class="badge badge-success">Actif</span>{% else %}<span class="badge badge-danger">Désactivé</span>{% endif %}
+    </div>
+    <div class="dc-actions">
+      <a href="{% url 'user_edit' u.pk %}" class="btn btn-outline btn-sm">Modifier</a>
+      <form method="post" action="{% url 'user_toggle_active' u.pk %}" style="display:inline;">
+        {% csrf_token %}
+        {% if u.is_active %}<button type="submit" class="btn btn-danger btn-sm">Désactiver</button>
+        {% else %}<button type="submit" class="btn btn-success btn-sm">Activer</button>{% endif %}
+      </form>
+    </div>
+  </div>
+  {% empty %}<p class="helptext">Aucun utilisateur trouvé.</p>{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Documentation — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>📚 Documentation</h1><div class="subtitle">{{ docs.count }} document(s) — technique &amp; utilisateur</div></div>
+</div>
+
+{% if can_manage_patrimoine %}
+<div class="card" style="margin-bottom:18px;">
+  <h3 style="margin-bottom:12px;">Importer un fichier</h3>
+  <form method="post" action="{% url 'documentation_quick_upload' %}" enctype="multipart/form-data" id="doc-upload-form">
+    {% csrf_token %}
+    <div class="upload-dropzone" id="dropzone-doc">
+      <div class="upload-icon">📤</div>
+      <p><strong>Glissez un fichier ici</strong> ou cliquez pour parcourir</p>
+      <small class="helptext">PDF, DOCX, XLSX, PNG, JPG</small>
+      <input type="file" name="fichier" id="doc-file-input" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg" style="display:none;">
+    </div>
+    <div id="doc-file-selected" style="display:none;margin:10px 0;"></div>
+    <div class="form-grid-3">
+      <div class="form-group">
+        <label>Application liée</label>
+        <select name="id_application" class="search-input">
+          {% for app in applications %}<option value="{{ app.pk }}">{{ app.nom }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Catégorie</label>
+        <input type="text" name="categorie" placeholder="Ex: Technique, Utilisateur..." class="search-input">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" name="description" placeholder="Optionnel" class="search-input">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Uploader</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="cards-grid">
+  {% for doc in docs %}
+  <div class="dyn-card">
+    <div class="dc-icon {% if doc.type_fichier == 'pdf' %}dc-red{% elif doc.type_fichier == 'xlsx' %}dc-green{% elif doc.type_fichier == 'docx' %}dc-blue{% else %}dc-gray{% endif %}">
+      {% if doc.type_fichier == 'pdf' %}📕{% elif doc.type_fichier == 'xlsx' %}📊{% elif doc.type_fichier == 'docx' %}📘{% else %}📄{% endif %}
+    </div>
+    <div class="dc-title">{{ doc.nom_fichier }}</div>
+    <div class="dc-sub">{{ doc.id_application.nom|default:"—" }}{% if doc.categorie %} · {{ doc.categorie }}{% endif %}</div>
+    {% if doc.description %}<p style="font-size:12px;color:var(--muted);margin:6px 0;">{{ doc.description|truncatechars:80 }}</p>{% endif %}
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;">Ajouté le {{ doc.date_upload|date:"d/m/Y" }}</div>
+    {% with fichiers=doc.fichiers.all %}
+      {% if fichiers %}
+      <div style="margin-top:8px;">
+        {% for f in fichiers %}
+          <a href="{{ f.fichier.url }}" target="_blank" class="badge badge-primary" style="text-decoration:none;display:inline-block;margin:2px;">⬇ {{ f.nom_original|truncatechars:20 }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+    {% if can_manage_patrimoine %}
+    <div class="dc-actions">
+      <a href="{% url 'documents_edit' doc.pk %}" class="btn btn-outline btn-sm">Gérer les fichiers</a>
+      <a href="{% url 'documents_delete' doc.pk %}" class="btn btn-danger btn-sm">Supprimer</a>
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}
+  <p class="helptext">Aucun document pour le moment.</p>
+  {% endfor %}
+</div>
+
+<style>
+.form-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px;}
+.upload-dropzone{border:2px dashed var(--border-strong);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;}
+.upload-dropzone:hover,.upload-dropzone.dragover{border-color:#4C6EF5;background:#F8F9FF;}
+.upload-icon{font-size:28px;margin-bottom:6px;}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var dz = document.getElementById('dropzone-doc');
+  if(!dz) return;
+  var input = document.getElementById('doc-file-input');
+  var selected = document.getElementById('doc-file-selected');
+  dz.addEventListener('click', function(){ input.click(); });
+  dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', function(){ dz.classList.remove('dragover'); });
+  dz.addEventListener('drop', function(e){
+    e.preventDefault(); dz.classList.remove('dragover');
+    if(e.dataTransfer.files.length){ input.files = e.dataTransfer.files; showFile(); }
+  });
+  input.addEventListener('change', showFile);
+  function showFile(){
+    if(input.files.length){
+      var f = input.files[0];
+      selected.style.display = 'block';
+      selected.innerHTML = '<span class="badge badge-primary">📄 ' + f.name + ' (' + Math.round(f.size/1024) + ' Ko)</span>';
+    }
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Certificats SSL — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Certificats SSL {% if voir_archives %}— Archives{% endif %}</h1><div class="subtitle">{{ items.count }} certificat(s) {% if voir_archives %}archivé(s){% else %}répertorié(s){% endif %}</div></div>
+  <div style="display:flex;gap:8px;">
+    {% if voir_archives %}
+      <a href="{% url 'ssl_list' %}" class="btn btn-outline">← Retour aux actifs</a>
+    {% else %}
+      <a href="{% url 'ssl_list' %}?archives=1" class="btn btn-outline">🗄 Archives</a>
+      {% if can_manage_patrimoine %}<a href="{% url 'ssl_create' %}" class="btn btn-primary">+ Nouveau certificat</a>{% endif %}
+    {% endif %}
+  </div>
+</div>
+
+{% if not voir_archives and expires_count %}
+<div class="alert alert-danger" style="margin-bottom:16px;">
+  {% if request.user.is_systeme_role %}
+    ⚠️ {{ expires_count }} certificat(s) SSL expiré(s). Un renouvellement est nécessaire dès que possible (bouton « Renouveler » sur chaque carte concernée).
+  {% else %}
+    ⚠️ {{ expires_count }} certificat(s) SSL expiré(s). Envoyez une demande de renouvellement à l'Administrateur Système (bouton « Demande de renouvellement » sur chaque carte concernée).
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="cards-grid">
+  {% for it in items %}
+  <div class="dyn-card">
+    <div class="dc-icon dc-blue"><i class="ti ti-lock" style="font-size:18px;color:#4C6EF5;" aria-hidden="true"></i></div>
+    <div class="dc-title">{{ it.domaine }}</div>
+    <div class="dc-sub">{{ it.id_environnement|default:"—" }} — {{ it.id_environnement.id_application.nom|default:"—" }}</div>
+    <div style="margin:8px 0;">
+      {% if it.est_expire %}<span class="badge badge-danger">Expiré</span>
+      {% elif it.statut == 'expiration_30' %}<span class="badge badge-info">Expire &lt; 30 j</span>
+      {% elif it.statut == 'expiration_60' %}<span class="badge badge-primary">Expire &lt; 60 j</span>
+      {% else %}<span class="badge badge-success">Valide</span>{% endif %}
+    </div>
+    <div style="font-size:12px;color:var(--muted);">
+      Fournisseur : {{ it.fournisseur_ssl|default:"—" }}<br>
+      Expiration : {{ it.date_expiration|date:"d/m/Y"|default:"—" }}
+    </div>
+    {% with j=it.jours_restants %}
+      {% if j is not None %}
+        <div style="margin-top:6px;font-size:12px;">
+          {% if j < 0 %}
+            <div class="alert alert-danger" style="padding:6px 10px;margin:6px 0;">
+              Certificat expiré depuis {{ j|cut:"-" }} jour(s).
+              {% if not voir_archives %}
+                {% if request.user.is_systeme_role %}
+                  <a href="{% url 'ssl_edit' it.pk %}" class="btn btn-sm btn-danger" style="margin-left:6px;">Renouveler</a>
+                {% elif can_manage_patrimoine %}
+                  <form method="post" action="{% url 'ssl_demande_renouvellement' it.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-accent" style="margin-left:6px;">Demande de renouvellement</button>
+                  </form>
+                {% endif %}
+              {% endif %}
+            </div>
+          {% else %}
+            <span style="color:var(--muted);">Temps restant : <strong>{{ j }} jour(s)</strong></span>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% if can_manage_patrimoine %}
+    <div class="dc-actions">
+      {% if voir_archives %}
+        <form method="post" action="{% url 'ssl_restore' it.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary btn-sm">Restaurer</button>
+        </form>
+      {% else %}
+        <a href="{% url 'ssl_edit' it.pk %}" class="btn btn-outline btn-sm">Modifier</a>
+        <a href="{% url 'ssl_delete' it.pk %}" class="btn btn-danger btn-sm">Archiver</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}<p class="helptext">{% if voir_archives %}Aucun certificat SSL archivé.{% else %}Aucun certificat SSL enregistré.{% endif %}</p>{% endfor %}
+</div>
+{% endblock %}

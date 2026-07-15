@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — APM{% endblock %}
+{% block content %}
+
+<div class="page-header"><h1>{{ title }}</h1></div>
+
+{% if linked_env %}
+  <div class="alert alert-info">
+    Cette application sera automatiquement liée à l'environnement « <strong>{{ linked_env.nom }}</strong> » que vous venez de créer.
+  </div>
+{% endif %}
+
+<div class="form-card">
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}">
+        {% if field.field.widget.input_type == 'checkbox' %}
+          {{ field }}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% else %}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+        {% endif %}
+        {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Enregistrer</button>
+    <a href="{% url 'applications_list' %}" class="btn btn-outline">Annuler</a>
+  </form>
+</div>
+
+<div id="ssl-prompt-app" style="display:none; margin-top:1rem;"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  {% if linked_env %}
+    window.showToast(
+      "L'environnement « {{ linked_env.nom }} » nécessite une application. Complétez ce formulaire pour la créer et la lier automatiquement.",
+      { type: 'warning', title: 'Application requise', duration: 8000 }
+    );
+  {% endif %}
+  const appId = '{{ form.instance.pk|default:"" }}';
+  const checkbox = document.querySelector('input[name="exige_ssl"]');
+  const prompt = document.getElementById('ssl-prompt-app');
+  const sslCreateUrl = '{% url "ssl_create" %}';
+  function update(){
+    if(!checkbox) return;
+    if(checkbox.checked){
+      if(appId){
+        prompt.innerHTML = `<div class="alert alert-info">Cette application nécessite un certificat SSL. <a href="${sslCreateUrl}?app=${appId}" class="btn btn-sm btn-primary">Ajouter un certificat SSL</a></div>`;
+      } else {
+        prompt.innerHTML = `<div class="alert alert-info">Cochez Enregistrer pour créer l'application, puis ajoutez un certificat SSL.</div>`;
+      }
+      prompt.style.display = 'block';
+    } else {
+      prompt.style.display = 'none';
+    }
+  }
+  // Notification temps réel : dès que la case "exige SSL" est cochée,
+  // avant même l'enregistrement du formulaire.
+  function notifySsl(){
+    if(!checkbox || !checkbox.checked) return;
+    var actionHtml = appId
+      ? `<a href="${sslCreateUrl}?app=${appId}" class="btn btn-sm btn-primary">Ajouter le certificat SSL</a>`
+      : '';
+    window.showToast(
+      "Cette application nécessite un certificat SSL. " +
+      (appId ? "Configurez-le maintenant." : "Il vous sera demandé de le configurer après l'enregistrement."),
+      { type: 'warning', title: 'Certificat SSL requis', actionHtml: actionHtml, duration: 7000 }
+    );
+  }
+  if(checkbox){
+    checkbox.addEventListener('change', function(){
+      update();
+      if(checkbox.checked) notifySsl();
+    });
+    update();
+  }
+});
+</script>
+
+{% endblock %}

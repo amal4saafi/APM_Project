@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Changer mon mot de passe — APM{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Changer mon mot de passe</h1></div>
+
+<div class="form-card" style="max-width:480px;">
+  <div class="password-rules">
+    <strong>Règles :</strong>
+    <ul><li>Minimum 8 caractères</li><li>Au moins une majuscule</li><li>Au moins un chiffre</li></ul>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="form-group">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+    {% endfor %}
+    <div class="pw-strength-wrap" style="margin-bottom:12px;">
+      <div class="pw-strength-track"><div id="pw-strength-bar" class="pw-strength-bar"></div></div>
+      <small id="pw-strength-label" class="helptext"></small>
+    </div>
+    <button type="submit" class="btn btn-primary">Changer le mot de passe</button>
+    <a href="{% url 'profil' %}" class="btn btn-outline">Annuler</a>
+  </form>
+</div>
+
+<script>
+(function(){
+  var input=document.getElementById('id_nouveau_mdp');
+  var bar=document.getElementById('pw-strength-bar');
+  var label=document.getElementById('pw-strength-label');
+  if(!input) return;
+  function score(pw){var s=0;if(pw.length>=8)s++;if(pw.length>=12)s++;if(/[A-Z]/.test(pw))s++;if(/[0-9]/.test(pw))s++;if(/[^A-Za-z0-9]/.test(pw))s++;return s;}
+  var levels=[{pct:'10%',color:'#FA5252',text:'Très faible'},{pct:'30%',color:'#F59F00',text:'Faible'},{pct:'55%',color:'#F59F00',text:'Moyen'},{pct:'80%',color:'#12B886',text:'Fort'},{pct:'100%',color:'#12B886',text:'Très fort'}];
+  input.addEventListener('input',function(){var s=score(input.value);var lvl=levels[Math.min(s,4)];bar.style.width=lvl.pct;bar.style.background=lvl.color;label.textContent=input.value?lvl.text:'';});
+})();
+</script>
+{% endblock %}

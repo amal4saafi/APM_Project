@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Admin — APM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Tableau de bord administrateur</h1><div class="subtitle">Gestion des utilisateurs et des rôles</div></div>
+  <div class="toolbar">
+    <a href="{% url 'user_create' %}" class="btn btn-primary">+ Utilisateur</a>
+    <a href="{% url 'role_create' %}" class="btn btn-accent">+ Rôle</a>
+  </div>
+</div>
+
+<!-- Stats cards -->
+<div class="stats-grid">
+  <div class="stat-card"><div class="label">Total utilisateurs</div><div class="value primary">{{ total_users }}</div></div>
+  <div class="stat-card"><div class="label">Comptes actifs</div><div class="value success">{{ total_actifs }}</div></div>
+  <div class="stat-card"><div class="label">Désactivés</div><div class="value danger">{{ total_inactifs }}</div></div>
+  <div class="stat-card"><div class="label">Rôles définis</div><div class="value">{{ total_roles }}</div></div>
+</div>
+
+<!-- Charts -->
+<div class="chart-wrap">
+  <div class="chart-card">
+    <h4>Répartition par rôle</h4>
+    <div class="chart-canvas-box"><canvas id="chartRoles"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h4>Actifs vs Désactivés</h4>
+    <div class="chart-canvas-box"><canvas id="chartActifs"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h4>Créations (7 jours)</h4>
+    <div class="chart-canvas-box"><canvas id="chartCreations"></canvas></div>
+  </div>
+</div>
+
+<!-- Cards utilisateurs -->
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <h3>Utilisateurs</h3>
+    <div class="toolbar">
+      <a href="{% url 'users_export_excel' %}" class="btn btn-outline btn-sm">⬇ Export</a>
+      <a href="{% url 'users_import_excel' %}" class="btn btn-outline btn-sm">⬆ Import</a>
+      <a href="{% url 'users_list' %}" class="btn btn-outline btn-sm">Voir tout</a>
+    </div>
+  </div>
+  <div class="cards-grid">
+    {% for u in derniers_users %}
+    <div class="dyn-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        {% if u.profil.photo %}<img src="{{ u.profil.photo.url }}" class="profil-avatar" style="width:38px;height:38px;">
+        {% else %}<div class="profil-avatar-placeholder" style="width:38px;height:38px;font-size:16px;">{{ u.username|first|upper }}</div>{% endif %}
+        <div>
+          <div class="dc-title">{{ u.get_full_name|default:u.username }}</div>
+          <div class="dc-sub">{{ u.email|default:"Pas d'email" }}</div>
+        </div>
+      </div>
+      {% if u.role %}
+        {% if u.role.type_role == 'admin' %}<span class="badge badge-primary">{{ u.role.nom }}</span>
+        {% elif u.role.type_role == 'admin_systeme' %}<span class="badge badge-info">{{ u.role.nom }}</span>
+        {% elif u.role.type_role == 'membre_dsi' %}<span class="badge badge-success">{{ u.role.nom }}</span>
+        {% else %}<span class="badge badge-muted">{{ u.role.nom }}</span>{% endif %}
+      {% else %}<span class="badge badge-muted">Sans rôle</span>{% endif %}
+      {% if u.is_active %}<span class="badge badge-success" style="margin-left:4px;">Actif</span>
+      {% else %}<span class="badge badge-danger" style="margin-left:4px;">Inactif</span>{% endif %}
+      <div class="dc-actions">
+        <a href="{% url 'user_edit' u.pk %}" class="btn btn-outline btn-sm">Modifier</a>
+        <form method="post" action="{% url 'user_toggle_active' u.pk %}" style="display:inline;">{% csrf_token %}
+          <button type="submit" class="btn {% if u.is_active %}btn-danger{% else %}btn-success{% endif %} btn-sm">
+            {% if u.is_active %}Désactiver{% else %}Activer{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+    {% empty %}<p class="helptext">Aucun utilisateur.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Historique du jour -->
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h3>Historique des actions</h3>
+    <a href="{% url 'historique_page' %}" class="btn btn-outline btn-sm">Tout l'historique</a>
+  </div>
+  <div class="histo-list">
+    {% for a in historique %}
+    <div class="histo-item">
+      <div class="histo-dot {% if 'Création' in a.action %}hd-green{% elif 'Suppression' in a.action %}hd-red{% elif 'Modification' in a.action %}hd-orange{% endif %}"></div>
+      <div class="histo-body">
+        <div class="histo-action">{{ a.action }}</div>
+        <div class="histo-meta">{{ a.utilisateur.username|default:"Système" }} — {{ a.date_action|date:"d/m/Y H:i" }}{% if a.objet_repr %} — {{ a.objet_repr }}{% endif %}</div>
+      </div>
+    </div>
+    {% empty %}<p class="helptext">Aucune action enregistrée aujourd'hui.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+var ROLES_DATA = {{ roles_data|safe }};
+var PIE_OPTS = {plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},maintainAspectRatio:false};
+var COLORS = ['#4C6EF5','#FF7A00','#12B886','#FA5252','#F59F00','#748FFC'];
+
+new Chart(document.getElementById('chartRoles'), {
+  type:'doughnut',
+  data:{labels:ROLES_DATA.labels,datasets:[{data:ROLES_DATA.values,backgroundColor:COLORS}]},
+  options:PIE_OPTS
+});
+new Chart(document.getElementById('chartActifs'), {
+  type:'doughnut',
+  data:{labels:['Actifs','Désactivés'],datasets:[{data:[{{ total_actifs }},{{ total_inactifs }}],backgroundColor:['#12B886','#FA5252']}]},
+  options:PIE_OPTS
+});
+var creationsData = {{ creations_data|safe }};
+new Chart(document.getElementById('chartCreations'), {
+  type:'bar',
+  data:{labels:creationsData.labels,datasets:[{label:'Créations',data:creationsData.values,backgroundColor:'#4C6EF5',borderRadius:6}]},
+  options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},maintainAspectRatio:false}
+});
+</script>
+{% endblock %}
